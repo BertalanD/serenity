@@ -250,7 +250,7 @@ void* kmalloc_eternal(size_t size)
     return ptr;
 }
 
-void* kmalloc(size_t size)
+__attribute__((hot)) void* kmalloc(size_t size)
 {
     kmalloc_verify_nospinlock_held();
     SpinlockLocker lock(s_lock);
@@ -278,7 +278,7 @@ void kfree_sized(void* ptr, size_t size)
     return kfree(ptr);
 }
 
-void kfree(void* ptr)
+__attribute__((hot)) void kfree(void* ptr)
 {
     if (!ptr)
         return;
