@@ -5,6 +5,7 @@
  */
 
 #include <AK/LexicalPath.h>
+#include <AK/StringBuilder.h>
 #include <LibCore/ArgsParser.h>
 #include <LibCore/ConfigFile.h>
 #include <LibCore/File.h>
@@ -26,9 +27,12 @@ struct FileResult {
     double time_taken { 0 };
     Test::Result result { Test::Result::Pass };
     int stdout_err_fd { -1 };
+    pid_t process_id { 0 };
 };
 
 String g_currently_running_test;
+
+static void display_backtrace(FileResult const&);
 
 class TestRunner : public ::Test::TestRunner {
 public:
@@ -128,6 +132,7 @@ void TestRunner::do_run_single_test(const String& test_path, size_t current_test
         print_modifiers({ Test::BG_RED, Test::FG_BLACK, Test::FG_BOLD });
         out("{}", test_result.result == Test::Result::Fail ? " FAIL  " : "CRASHED");
         print_modifiers({ Test::CLEAR });
+
     } else {
         print_modifiers({ Test::BG_GREEN, Test::FG_BLACK, Test::FG_BOLD });
         out(" PASS  ");
@@ -185,6 +190,58 @@ void TestRunner::do_run_single_test(const String& test_path, size_t current_test
     }
 
     close(test_result.stdout_err_fd);
+
+    if (test_result.result == Test::Result::Crashed) {
+        static bool self_test_mode = []() {
+            auto f = Core::File::construct("/proc/system_mode");
+            if (!f->open(Core::OpenMode::ReadOnly))
+                return false;
+            String system_mode = String::copy(f->read_all(), Chomp);
+            if (f->error())
+                return false;
+            return system_mode == "selftest"sv;
+        }();
+        if (self_test_mode)
+            display_backtrace(test_result);
+    }
+}
+
+static void display_backtrace(FileResult const& test_result)
+{
+    dbgln("Attempting to display backtrace for {} (PID {})", test_result.file_path.basename(), test_result.process_id);
+    StringBuilder prefix;
+    prefix.append("/tmp/coredump/"sv);
+    prefix.append(test_result.file_path.basename());
+    prefix.append('_');
+    prefix.append(String::number(test_result.process_id));
+
+    // Creating coredumps might take a bit of time, so let's give the kernel 5 seconds to do it.
+    // FIXME: Get Core::FileWatcher to work with timeouts.
+    for (size_t attempts = 0; attempts < 5; ++attempts) {
+        Core::DirIterator di("/tmp/coredump", Core::DirIterator::Flags::SkipParentAndBaseDir);
+        while (di.has_next()) {
+            if (auto path = di.next_full_path(); path.starts_with(prefix.string_view())) {
+                // We do the backtrace in a separate process to prevent LibCoredump issues from bringing the test runner down.
+                pid_t bt_pid { -1 };
+                char const* args[] = {
+                    "bt",
+                    path.characters(),
+                    nullptr
+                };
+                auto ret = posix_spawnp(&bt_pid, "bt", nullptr, nullptr, const_cast<char**>(args), environ);
+                if (ret != 0) {
+                    perror("posix_spawnp(bt)");
+                    return;
+                }
+                if (waitpid(bt_pid, nullptr, 0) < 0)
+                    return;
+                unlink(path.characters());
+                return;
+            }
+        }
+        sleep(1);
+    }
+    dbgln("Failed to display backtrace");
 }
 
 FileResult TestRunner::run_test_file(const String& test_path)
@@ -193,7 +250,7 @@ FileResult TestRunner::run_test_file(const String& test_path)
 
     auto path_for_test = LexicalPath(test_path);
     if (should_skip_test(path_for_test)) {
-        return FileResult { move(path_for_test), 0.0, Test::Result::Skip, -1 };
+        return FileResult { move(path_for_test), 0.0, Test::Result::Skip, -1, 0 };
     }
 
     // FIXME: actual error handling, mark test as :yaksplode: if any are bad instead of VERIFY
@@ -250,7 +307,7 @@ FileResult TestRunner::run_test_file(const String& test_path)
     ret = unlink(child_out_err_path);
     VERIFY(ret == 0);
 
-    return FileResult { move(path_for_test), get_time_in_ms() - start_time, test_result, child_out_err_file };
+    return FileResult { move(path_for_test), get_time_in_ms() - start_time, test_result, child_out_err_file, child_pid };
 }
 
 int main(int argc, char** argv)
