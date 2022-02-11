@@ -209,13 +209,13 @@ pushd "$DIR/Tarballs"
             git init > /dev/null
             git add . > /dev/null
             git commit -am "BASE" > /dev/null
-            git am "$DIR"/Patches/llvm-backport-objcopy-update-section.patch > /dev/null
-            git apply "$DIR"/Patches/llvm.patch > /dev/null
+            git am "$DIR"/Patches/llvm/*.patch > /dev/null
         else
-            patch -p1 < "$DIR/Patches/llvm.patch" > /dev/null
-            patch -p1 < "$DIR/Patches/llvm-backport-objcopy-update-section.patch" > /dev/null
+            for patch in "$DIR"/Patches/llvm/*.patch; do
+                patch -p1 < "$patch" > /dev/null
+            done
         fi
-        $MD5SUM "$DIR/Patches/llvm.patch" "$DIR/Patches/llvm-backport-objcopy-update-section.patch" > .patch.applied
+        $MD5SUM "$DIR"/Patches/llvm/*.patch > .patch.applied
     popd
 popd
 

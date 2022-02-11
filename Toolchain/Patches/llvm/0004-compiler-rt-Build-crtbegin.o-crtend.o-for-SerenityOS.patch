@@ -1,0 +1,25 @@
+From f5c603ae7bfd1d58b899283df6ff8e027bfc1d74 Mon Sep 17 00:00:00 2001
+From: Daniel Bertalan <dani@danielbertalan.dev>
+Date: Fri, 11 Feb 2022 20:46:30 +0100
+Subject: [PATCH 4/7] [compiler-rt] Build crtbegin.o/crtend.o for SerenityOS
+
+---
+ compiler-rt/cmake/config-ix.cmake | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/compiler-rt/cmake/config-ix.cmake b/compiler-rt/cmake/config-ix.cmake
+index 39b9120f0..1a49ac3e5 100644
+--- a/compiler-rt/cmake/config-ix.cmake
++++ b/compiler-rt/cmake/config-ix.cmake
+@@ -684,7 +684,7 @@ endif()
+ 
+ # TODO: Add builtins support.
+ 
+-if (CRT_SUPPORTED_ARCH AND OS_NAME MATCHES "Linux" AND NOT LLVM_USE_SANITIZER)
++if (CRT_SUPPORTED_ARCH AND OS_NAME MATCHES "Linux|SerenityOS" AND NOT LLVM_USE_SANITIZER)
+   set(COMPILER_RT_HAS_CRT TRUE)
+ else()
+   set(COMPILER_RT_HAS_CRT FALSE)
+-- 
+2.35.1
+

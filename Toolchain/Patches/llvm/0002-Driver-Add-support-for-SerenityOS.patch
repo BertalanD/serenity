@@ -1,3 +1,23 @@
+From 431ee4964bd84f578fdea3d5de9a6aeba6776b16 Mon Sep 17 00:00:00 2001
+From: Daniel Bertalan <dani@danielbertalan.dev>
+Date: Fri, 11 Feb 2022 20:12:53 +0100
+Subject: [PATCH 2/7] [Driver] Add support for SerenityOS
+
+---
+ clang/lib/Basic/Targets.cpp              |   6 +
+ clang/lib/Basic/Targets/OSTargets.h      |  16 ++
+ clang/lib/Driver/CMakeLists.txt          |   1 +
+ clang/lib/Driver/Driver.cpp              |   4 +
+ clang/lib/Driver/ToolChain.cpp           |   2 +
+ clang/lib/Driver/ToolChains/Arch/X86.cpp |   1 +
+ clang/lib/Driver/ToolChains/Clang.cpp    |   8 +-
+ clang/lib/Driver/ToolChains/Serenity.cpp | 327 +++++++++++++++++++++++
+ clang/lib/Driver/ToolChains/Serenity.h   |  99 +++++++
+ clang/lib/Frontend/InitHeaderSearch.cpp  |   2 +
+ 10 files changed, 465 insertions(+), 1 deletion(-)
+ create mode 100644 clang/lib/Driver/ToolChains/Serenity.cpp
+ create mode 100644 clang/lib/Driver/ToolChains/Serenity.h
+
 diff --git a/clang/lib/Basic/Targets.cpp b/clang/lib/Basic/Targets.cpp
 index ba91d0439..42265d547 100644
 --- a/clang/lib/Basic/Targets.cpp
@@ -592,253 +612,6 @@ index ba9f96384..4aecfeee2 100644
      return;
  
    case llvm::Triple::Win32:
-diff --git a/compiler-rt/cmake/config-ix.cmake b/compiler-rt/cmake/config-ix.cmake
-index 39b9120f0..1a49ac3e5 100644
---- a/compiler-rt/cmake/config-ix.cmake
-+++ b/compiler-rt/cmake/config-ix.cmake
-@@ -684,7 +684,7 @@ endif()
- 
- # TODO: Add builtins support.
- 
--if (CRT_SUPPORTED_ARCH AND OS_NAME MATCHES "Linux" AND NOT LLVM_USE_SANITIZER)
-+if (CRT_SUPPORTED_ARCH AND OS_NAME MATCHES "Linux|SerenityOS" AND NOT LLVM_USE_SANITIZER)
-   set(COMPILER_RT_HAS_CRT TRUE)
- else()
-   set(COMPILER_RT_HAS_CRT FALSE)
-diff --git a/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake b/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake
-index ad2820b32..deaa2c380 100644
---- a/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake
-+++ b/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake
-@@ -14,6 +14,8 @@ set(LLVM_INCLUDE_DIR ${LLVM_PATH}/include CACHE PATH "Path to llvm/include")
- set(LLVM_PATH ${LLVM_PATH} CACHE PATH "Path to LLVM source tree")
- set(LLVM_MAIN_SRC_DIR ${LLVM_PATH})
- set(LLVM_CMAKE_PATH "${LLVM_PATH}/cmake/modules")
-+set(LLVM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
-+set(LLVM_LIBRARY_OUTPUT_INTDIR "${CMAKE_CURRENT_BINARY_DIR}/lib")
- 
- if (EXISTS "${LLVM_CMAKE_PATH}")
-   list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_PATH}")
-diff --git a/libcxx/include/__config b/libcxx/include/__config
-index 97e33f315..179bd2a67 100644
---- a/libcxx/include/__config
-+++ b/libcxx/include/__config
-@@ -1148,6 +1148,7 @@ extern "C" _LIBCPP_FUNC_VIS void __sanitizer_annotate_contiguous_container(
-       defined(__sun__) || \
-       defined(__MVS__) || \
-       defined(_AIX) || \
-+      defined(__serenity__) || \
-       (defined(__MINGW32__) && __has_include(<pthread.h>))
- #    define _LIBCPP_HAS_THREAD_API_PTHREAD
- #  elif defined(__Fuchsia__)
-diff --git a/libcxx/include/__locale b/libcxx/include/__locale
-index ad742997d..c75dcb458 100644
---- a/libcxx/include/__locale
-+++ b/libcxx/include/__locale
-@@ -31,7 +31,7 @@
- #elif defined(__sun__)
- # include <xlocale.h>
- # include <__support/solaris/xlocale.h>
--#elif defined(_NEWLIB_VERSION)
-+#elif defined(_NEWLIB_VERSION) || defined(__serenity__)
- # include <__support/newlib/xlocale.h>
- #elif defined(__OpenBSD__)
- # include <__support/openbsd/xlocale.h>
-@@ -490,7 +490,7 @@ public:
-     static const mask xdigit = _ISXDIGIT;
-     static const mask blank  = _ISBLANK;
-     static const mask __regex_word = 0x80;
--#elif defined(_NEWLIB_VERSION)
-+#elif defined(_NEWLIB_VERSION) || defined(__serenity__)
-     // Same type as Newlib's _ctype_ array in newlib/libc/include/ctype.h.
-     typedef char mask;
-     static const mask space  = _S;
-diff --git a/libcxx/include/__support/newlib/xlocale.h b/libcxx/include/__support/newlib/xlocale.h
-index b75f9263a..f5ffb9003 100644
---- a/libcxx/include/__support/newlib/xlocale.h
-+++ b/libcxx/include/__support/newlib/xlocale.h
-@@ -9,7 +9,7 @@
- #ifndef _LIBCPP_SUPPORT_NEWLIB_XLOCALE_H
- #define _LIBCPP_SUPPORT_NEWLIB_XLOCALE_H
- 
--#if defined(_NEWLIB_VERSION)
-+#if defined(_NEWLIB_VERSION) || defined(__serenity__)
- 
- #include <cstdlib>
- #include <clocale>
-@@ -22,6 +22,6 @@
- #include <__support/xlocale/__strtonum_fallback.h>
- #endif
- 
--#endif // _NEWLIB_VERSION
-+#endif // _NEWLIB_VERSION || __serenity__
- 
- #endif
-diff --git a/libcxx/include/initializer_list b/libcxx/include/initializer_list
-index ea1f23467..45631ac2f 100644
---- a/libcxx/include/initializer_list
-+++ b/libcxx/include/initializer_list
-@@ -43,7 +43,9 @@ template<class E> const E* end(initializer_list<E> il) noexcept; // constexpr in
- */
- 
- #include <__config>
-+#if !defined(__serenity__) || !defined(KERNEL)
- #include <cstddef>
-+#endif
- 
- #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
- #pragma GCC system_header
-diff --git a/libcxx/include/locale b/libcxx/include/locale
-index 8e584005d..f29f3453e 100644
---- a/libcxx/include/locale
-+++ b/libcxx/include/locale
-@@ -206,7 +206,7 @@ template <class charT> class messages_byname;
- 
- #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
- // Most unix variants have catopen.  These are the specific ones that don't.
--#  if !defined(__BIONIC__) && !defined(_NEWLIB_VERSION)
-+#  if !defined(__BIONIC__) && !defined(_NEWLIB_VERSION) && !defined(__serenity__)
- #    define _LIBCPP_HAS_CATOPEN 1
- #    include <nl_types.h>
- #  endif
-diff --git a/libcxx/include/new b/libcxx/include/new
-index aefc08c16..7ee71d16b 100644
---- a/libcxx/include/new
-+++ b/libcxx/include/new
-@@ -310,7 +310,7 @@ inline _LIBCPP_INLINE_VISIBILITY void __libcpp_deallocate_unsized(void* __ptr, s
- // Returns the allocated memory, or `nullptr` on failure.
- inline _LIBCPP_INLINE_VISIBILITY
- void* __libcpp_aligned_alloc(std::size_t __alignment, std::size_t __size) {
--#if defined(_LIBCPP_MSVCRT_LIKE)
-+#if defined(_LIBCPP_MSVCRT_LIKE) || (defined(__serenity__) && !defined(KERNEL))
-   return ::_aligned_malloc(__size, __alignment);
- #else
-   void* __result = nullptr;
-@@ -322,7 +322,7 @@ void* __libcpp_aligned_alloc(std::size_t __alignment, std::size_t __size) {
- 
- inline _LIBCPP_INLINE_VISIBILITY
- void __libcpp_aligned_free(void* __ptr) {
--#if defined(_LIBCPP_MSVCRT_LIKE)
-+#if defined(_LIBCPP_MSVCRT_LIKE) || (defined(__serenity__) && !defined(KERNEL))
-   ::_aligned_free(__ptr);
- #else
-   ::free(__ptr);
-diff --git a/libcxx/src/include/config_elast.h b/libcxx/src/include/config_elast.h
-index 7880c733f..87b25cf42 100644
---- a/libcxx/src/include/config_elast.h
-+++ b/libcxx/src/include/config_elast.h
-@@ -33,6 +33,8 @@
- #define _LIBCPP_ELAST 4095
- #elif defined(__APPLE__)
- // No _LIBCPP_ELAST needed on Apple
-+#elif defined(__serenity__)
-+// No _LIBCPP_ELAST needed on SerenityOS
- #elif defined(__sun__)
- #define _LIBCPP_ELAST ESTALE
- #elif defined(__MVS__)
-diff --git a/libcxx/src/locale.cpp b/libcxx/src/locale.cpp
-index d5ab8fb3b..5039c1987 100644
---- a/libcxx/src/locale.cpp
-+++ b/libcxx/src/locale.cpp
-@@ -1145,6 +1145,8 @@ ctype<char>::classic_table() noexcept
-     return __pctype_func();
- #elif defined(__EMSCRIPTEN__)
-     return *__ctype_b_loc();
-+#elif defined(__serenity__)
-+    return _ctype_;
- #elif defined(_NEWLIB_VERSION)
-     // Newlib has a 257-entry table in ctype_.c, where (char)0 starts at [1].
-     return _ctype_ + 1;
-diff --git a/llvm/cmake/modules/HandleLLVMOptions.cmake b/llvm/cmake/modules/HandleLLVMOptions.cmake
-index 0c3419390..7673b9183 100644
---- a/llvm/cmake/modules/HandleLLVMOptions.cmake
-+++ b/llvm/cmake/modules/HandleLLVMOptions.cmake
-@@ -228,7 +228,7 @@ endif()
- 
- # Pass -Wl,-z,defs. This makes sure all symbols are defined. Otherwise a DSO
- # build might work on ELF but fail on MachO/COFF.
--if(NOT (CMAKE_SYSTEM_NAME MATCHES "Darwin|FreeBSD|OpenBSD|DragonFly|AIX|SunOS|OS390" OR
-+if(NOT (CMAKE_SYSTEM_NAME MATCHES "Darwin|FreeBSD|OpenBSD|DragonFly|AIX|SunOS|OS390|SerenityOS" OR
-         WIN32 OR CYGWIN) AND
-    NOT LLVM_USE_SANITIZER)
-   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-z,defs")
-diff --git a/llvm/include/llvm/ADT/Triple.h b/llvm/include/llvm/ADT/Triple.h
-index 76f351405..b81556c55 100644
---- a/llvm/include/llvm/ADT/Triple.h
-+++ b/llvm/include/llvm/ADT/Triple.h
-@@ -199,7 +199,8 @@ public:
-     Hurd,       // GNU/Hurd
-     WASI,       // Experimental WebAssembly OS
-     Emscripten,
--    LastOSType = Emscripten
-+    Serenity,
-+    LastOSType = Serenity
-   };
-   enum EnvironmentType {
-     UnknownEnvironment,
-@@ -628,6 +629,11 @@ public:
-     return getOS() == Triple::AIX;
-   }
- 
-+  /// Tests whether the OS is SerenityOS
-+  bool isOSSerenity() const {
-+    return getOS() == Triple::Serenity;
-+  }
-+
-   /// Tests whether the OS uses the ELF binary format.
-   bool isOSBinFormatELF() const {
-     return getObjectFormat() == Triple::ELF;
-diff --git a/llvm/lib/Support/Triple.cpp b/llvm/lib/Support/Triple.cpp
-index 883115463..22b39d8f5 100644
---- a/llvm/lib/Support/Triple.cpp
-+++ b/llvm/lib/Support/Triple.cpp
-@@ -218,6 +218,7 @@ StringRef Triple::getOSTypeName(OSType Kind) {
-   case PS4: return "ps4";
-   case RTEMS: return "rtems";
-   case Solaris: return "solaris";
-+  case Serenity: return "serenity";
-   case TvOS: return "tvos";
-   case WASI: return "wasi";
-   case WatchOS: return "watchos";
-@@ -538,6 +539,7 @@ static Triple::OSType parseOS(StringRef OSName) {
-     .StartsWith("hurd", Triple::Hurd)
-     .StartsWith("wasi", Triple::WASI)
-     .StartsWith("emscripten", Triple::Emscripten)
-+    .StartsWith("serenity", Triple::Serenity)
-     .Default(Triple::UnknownOS);
- }
- 
-diff --git a/runtimes/CMakeLists.txt b/runtimes/CMakeLists.txt
-index 1ffce323d..552521192 100644
---- a/runtimes/CMakeLists.txt
-+++ b/runtimes/CMakeLists.txt
-@@ -58,17 +58,28 @@ if(compiler_rt_path)
-   endif()
- endif()
- 
-+# If building standalone by pointing CMake at this runtimes directory,
-+# LLVM_BINARY_DIR isn't set, find_package(LLVM) will fail and these
-+# intermediate paths are unset.
-+if (LLVM_BINARY_DIR STREQUAL "")
-+  set(LLVM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
-+endif()
-+if (NOT LLVM_FOUND)
-+  set(LLVM_TOOLS_BINARY_DIR ${LLVM_BINARY_DIR}/bin)
-+  set(LLVM_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/lib)
-+endif()
-+
- # Setting these variables will allow the sub-build to put their outputs into
- # the library and bin directories of the top-level build.
- set(LLVM_LIBRARY_OUTPUT_INTDIR ${LLVM_LIBRARY_DIR})
- set(LLVM_RUNTIME_OUTPUT_INTDIR ${LLVM_TOOLS_BINARY_DIR})
- 
- # This variable makes sure that e.g. llvm-lit is found.
--set(LLVM_MAIN_SRC_DIR ${LLVM_BUILD_MAIN_SRC_DIR})
-+set(LLVM_MAIN_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../llvm)
- set(LLVM_CMAKE_PATH ${LLVM_MAIN_SRC_DIR}/cmake/modules)
- 
- # This variable is used by individual runtimes to locate LLVM files.
--set(LLVM_PATH ${LLVM_BUILD_MAIN_SRC_DIR})
-+set(LLVM_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../llvm)
- 
- if(APPLE)
-   set(LLVM_ENABLE_LIBCXX ON CACHE BOOL "")
+-- 
+2.35.1
+

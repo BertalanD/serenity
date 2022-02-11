@@ -1,0 +1,66 @@
+From 2ea77ec49ee95644d52e0b449012eaf67747260b Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Martin=20Storsj=C3=B6?= <martin@martin.st>
+Date: Wed, 11 Aug 2021 14:14:31 +0300
+Subject: [PATCH 7/7] Reapply [runtimes] Set more paths when building runtimes
+ standalone
+
+These paths are needed when building with per-target runtime directories.
+
+(It's possible to fix this by manually setting these when invoking
+cmake, but one isn't supposed to need to do that.)
+
+Also set LLVM_TOOLS_BINARY_DIR while touching this area (as it's
+also unset in this case) even if it isn't specifically needed by the
+per-target runtime configuration.
+
+Fixed since previous attempt: Don't check if the runtimes directory
+is the root of the CMake invocation; when the main LLVM CMake
+build builds runtimes, it does invoke a sub-CMake with this directory
+as the root too, just as if manually invoking CMake at the runtimes
+directory. Instead check whether LLVM_TOOLS_BINARY_DIR was set and
+whether find_package(LLVM) succeeded or not.
+
+Differential Revision: https://reviews.llvm.org/D107895
+---
+ libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake |  2 ++
+ runtimes/CMakeLists.txt                        | 11 +++++++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake b/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake
+index ad2820b32..deaa2c380 100644
+--- a/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake
++++ b/libcxx/cmake/Modules/HandleOutOfTreeLLVM.cmake
+@@ -14,6 +14,8 @@ set(LLVM_INCLUDE_DIR ${LLVM_PATH}/include CACHE PATH "Path to llvm/include")
+ set(LLVM_PATH ${LLVM_PATH} CACHE PATH "Path to LLVM source tree")
+ set(LLVM_MAIN_SRC_DIR ${LLVM_PATH})
+ set(LLVM_CMAKE_PATH "${LLVM_PATH}/cmake/modules")
++set(LLVM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
++set(LLVM_LIBRARY_OUTPUT_INTDIR "${CMAKE_CURRENT_BINARY_DIR}/lib")
+ 
+ if (EXISTS "${LLVM_CMAKE_PATH}")
+   list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_PATH}")
+diff --git a/runtimes/CMakeLists.txt b/runtimes/CMakeLists.txt
+index 1ffce323d..e926c3c30 100644
+--- a/runtimes/CMakeLists.txt
++++ b/runtimes/CMakeLists.txt
+@@ -58,6 +58,17 @@ if(compiler_rt_path)
+   endif()
+ endif()
+ 
++# If building standalone by pointing CMake at this runtimes directory,
++# LLVM_BINARY_DIR isn't set, find_package(LLVM) will fail and these
++# intermediate paths are unset.
++if (LLVM_BINARY_DIR STREQUAL "")
++  set(LLVM_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
++endif()
++if (NOT LLVM_FOUND)
++  set(LLVM_TOOLS_BINARY_DIR ${LLVM_BINARY_DIR}/bin)
++  set(LLVM_LIBRARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/lib)
++endif()
++
+ # Setting these variables will allow the sub-build to put their outputs into
+ # the library and bin directories of the top-level build.
+ set(LLVM_LIBRARY_OUTPUT_INTDIR ${LLVM_LIBRARY_DIR})
+-- 
+2.35.1
+

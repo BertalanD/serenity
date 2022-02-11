@@ -1,7 +1,7 @@
-From 140a4569a033b133fc2dc1787ae83d505e03b982 Mon Sep 17 00:00:00 2001
+From e9e45f39cd081dfd9eb9b2868aacb504938d69d4 Mon Sep 17 00:00:00 2001
 From: Leonard Chan <leonardchan@google.com>
 Date: Wed, 20 Oct 2021 13:03:49 -0700
-Subject: [PATCH] Add --update-section
+Subject: [PATCH 6/7] Add --update-section
 
 This is another attempt at D59351 which attempted to add --update-section, but
 with some heuristics for adjusting segment/section offsets/sizes in the event
@@ -436,5 +436,5 @@ index 63abbe4c2..ccd7ff292 100644
 +    : Eq<"update-section", "Add section <name> with contents from a file <file>.">,
 +      MetaVarName<"name=file">;
 -- 
-2.34.1
+2.35.1
 
