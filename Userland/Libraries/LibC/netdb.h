@@ -48,6 +48,8 @@ struct protoent* getprotobynumber(int proto);
 struct protoent* getprotoent(void);
 void setprotoent(int stay_open);
 
+#define h_errno h_errno
+
 #ifdef NO_TLS
 extern int h_errno;
 #else
