@@ -774,14 +774,28 @@ int setresgid(gid_t rgid, gid_t egid, gid_t sgid)
     __RETURN_WITH_ERRNO(rc, rc, -1);
 }
 
-// https://pubs.opengroup.org/onlinepubs/9699919799/functions/access.html
+// https://pubs.opengroup.org/onlinepubs/9699919799/functions/faccessat.html
 int access(char const* pathname, int mode)
+{
+    return faccessat(AT_FDCWD, pathname, mode, 0);
+}
+
+// https://pubs.opengroup.org/onlinepubs/9699919799/functions/access.html
+int faccessat(int fd, char const* pathname, int mode, int flag)
 {
     if (!pathname) {
         errno = EFAULT;
         return -1;
     }
-    int rc = syscall(SC_access, pathname, strlen(pathname), mode);
+
+    Syscall::SC_access_params params {
+        { pathname, strlen(pathname) },
+        fd,
+        mode,
+        flag
+    };
+
+    int rc = syscall(SC_access, &params);
     __RETURN_WITH_ERRNO(rc, rc, -1);
 }
 

@@ -348,7 +348,7 @@ public:
     ErrorOr<FlatPtr> sys$setresuid(UserID, UserID, UserID);
     ErrorOr<FlatPtr> sys$setresgid(GroupID, GroupID, GroupID);
     ErrorOr<FlatPtr> sys$alarm(unsigned seconds);
-    ErrorOr<FlatPtr> sys$access(Userspace<char const*> pathname, size_t path_length, int mode);
+    ErrorOr<FlatPtr> sys$access(Userspace<Syscall::SC_access_params const*>);
     ErrorOr<FlatPtr> sys$fcntl(int fd, int cmd, uintptr_t extra_arg);
     ErrorOr<FlatPtr> sys$ioctl(int fd, unsigned request, FlatPtr arg);
     ErrorOr<FlatPtr> sys$mkdir(Userspace<char const*> pathname, size_t path_length, mode_t mode);
@@ -1003,14 +1003,29 @@ inline bool InodeMetadata::may_read(Process const& process) const
     return may_read(process.euid(), process.egid(), process.extra_gids());
 }
 
+inline bool InodeMetadata::may_read_real(Process const& process) const
+{
+    return may_read(process.uid(), process.gid(), process.extra_gids());
+}
+
 inline bool InodeMetadata::may_write(Process const& process) const
 {
     return may_write(process.euid(), process.egid(), process.extra_gids());
 }
 
+inline bool InodeMetadata::may_write_real(Process const& process) const
+{
+    return may_write(process.uid(), process.gid(), process.extra_gids());
+}
+
 inline bool InodeMetadata::may_execute(Process const& process) const
 {
     return may_execute(process.euid(), process.egid(), process.extra_gids());
+}
+
+inline bool InodeMetadata::may_execute_real(Process const& process) const
+{
+    return may_execute(process.uid(), process.gid(), process.extra_gids());
 }
 
 inline ProcessID Thread::pid() const

@@ -42,6 +42,10 @@ struct InodeMetadata {
     bool may_write(Process const&) const;
     bool may_execute(Process const&) const;
 
+    bool may_read_real(Process const&) const;
+    bool may_write_real(Process const&) const;
+    bool may_execute_real(Process const&) const;
+
     bool may_read(UserID u, GroupID g, Span<GroupID const> eg) const
     {
         if (u == 0)
