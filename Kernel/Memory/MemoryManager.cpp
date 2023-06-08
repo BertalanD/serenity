@@ -26,6 +26,8 @@
 #include <Kernel/Sections.h>
 #include <Kernel/Tasks/Process.h>
 
+#include <Kernel/Arch/aarch64/ASM_wrapper.h>
+
 extern u8 start_of_kernel_image[];
 extern u8 end_of_kernel_image[];
 extern u8 start_of_kernel_text[];
@@ -630,6 +632,8 @@ PageTableEntry* MemoryManager::ensure_pte(PageDirectory& page_directory, Virtual
     pde.set_writable(true);
     pde.set_global(&page_directory == m_kernel_page_directory.ptr());
 
+    Aarch64::Asm::flush_data_cache((FlatPtr)&pde, sizeof(PageDirectoryEntry));
+
     // NOTE: This leaked ref is matched by the unref in MemoryManager::release_pte()
     (void)page_table.leak_ref();
 
@@ -1111,6 +1115,7 @@ PageDirectoryEntry* MemoryManager::quickmap_pd(PageDirectory& directory, size_t 
     auto& pte = boot_pd_kernel_pt1023[pte_index];
     auto pd_paddr = directory.m_directory_pages[pdpt_index]->paddr();
     if (pte.physical_page_base() != pd_paddr.get()) {
+        Aarch64::Asm::flush_data_cache(vaddr.get(), PAGE_SIZE);
         pte.set_physical_page_base(pd_paddr.get());
         pte.set_present(true);
         pte.set_writable(true);
@@ -1129,6 +1134,7 @@ PageTableEntry* MemoryManager::quickmap_pt(PhysicalAddress pt_paddr)
 
     auto& pte = ((PageTableEntry*)boot_pd_kernel_pt1023)[pte_index];
     if (pte.physical_page_base() != pt_paddr.get()) {
+        Aarch64::Asm::flush_data_cache(vaddr.get(), PAGE_SIZE);
         pte.set_physical_page_base(pt_paddr.get());
         pte.set_present(true);
         pte.set_writable(true);
@@ -1166,6 +1172,7 @@ void MemoryManager::unquickmap_page()
     VirtualAddress vaddr(KERNEL_QUICKMAP_PER_CPU_BASE + Processor::current_id() * PAGE_SIZE);
     u32 pte_idx = (vaddr.get() - KERNEL_PT1024_BASE) / PAGE_SIZE;
     auto& pte = ((PageTableEntry*)boot_pd_kernel_pt1023)[pte_idx];
+    Aarch64::Asm::flush_data_cache(vaddr.get(), PAGE_SIZE);
     pte.clear();
     flush_tlb_local(vaddr);
     mm_data.m_quickmap_in_use.unlock(mm_data.m_quickmap_previous_interrupts_state);
@@ -1217,6 +1224,7 @@ void MemoryManager::set_page_writable_direct(VirtualAddress vaddr, bool writable
     if (pte->is_writable() == writable)
         return;
     pte->set_writable(writable);
+    Aarch64::Asm::flush_data_cache((FlatPtr)pte, sizeof(*pte));
     flush_tlb(&kernel_page_directory(), vaddr);
 }
 

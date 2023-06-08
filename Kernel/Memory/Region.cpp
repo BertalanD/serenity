@@ -19,6 +19,7 @@
 #include <Kernel/Tasks/Scheduler.h>
 #include <Kernel/Tasks/Thread.h>
 
+#include <Kernel/Arch/aarch64/ASM_wrapper.h>
 namespace Kernel::Memory {
 
 Region::Region()
@@ -243,6 +244,7 @@ bool Region::map_individual_page_impl(size_t page_index, RefPtr<PhysicalPage> pa
         pte->set_pat(is_write_combine());
     pte->set_user_allowed(user_allowed);
 
+    Aarch64::Asm::flush_data_cache((FlatPtr)pte, sizeof(*pte));
     return true;
 }
 
