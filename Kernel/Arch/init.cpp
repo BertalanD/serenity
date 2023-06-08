@@ -64,6 +64,7 @@
 #    include <Kernel/Arch/aarch64/RPi/Framebuffer.h>
 #    include <Kernel/Arch/aarch64/RPi/Mailbox.h>
 #    include <Kernel/Arch/aarch64/RPi/MiniUART.h>
+#    include <Kernel/Arch/aarch64/RPi/Timer.h>
 #endif
 
 // Defined in the linker script
@@ -89,6 +90,7 @@ multiboot_module_entry_t multiboot_copy_boot_modules_array[16];
 size_t multiboot_copy_boot_modules_count;
 
 READONLY_AFTER_INIT bool g_in_early_boot;
+READONLY_AFTER_INIT u32 g_emmc_clock_speed_hack;
 
 namespace Kernel {
 
@@ -242,6 +244,7 @@ extern "C" [[noreturn]] UNMAP_AFTER_INIT void init([[maybe_unused]] BootInfo con
     auto firmware_version = RPi::Mailbox::the().query_firmware_version();
     dmesgln("RPi: Firmware version: {}", firmware_version);
 
+    g_emmc_clock_speed_hack = RPi::Timer::get_clock_rate(RPi::Timer::ClockID::EMMC);
     RPi::Framebuffer::initialize();
 #endif
 

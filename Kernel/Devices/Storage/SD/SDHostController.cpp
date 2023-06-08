@@ -15,6 +15,8 @@
 #    include <Kernel/Arch/aarch64/RPi/SDHostController.h>
 #endif
 
+extern u32 g_emmc_clock_speed_hack;
+
 namespace Kernel {
 
 // Relevant Specifications:
@@ -948,7 +950,8 @@ ErrorOr<u32> SDHostController::retrieve_sd_clock_frequency()
     if (m_registers->capabilities.base_clock_frequency == 0) {
         // Spec says:
         // If these bits are all 0, the Host System has to get information via another method
-        TODO();
+        dbgln("EMMC clock freq: {} Hz", g_emmc_clock_speed_hack);
+        return g_emmc_clock_speed_hack;
     }
     const i64 one_mhz = 1'000'000;
     return { m_registers->capabilities.base_clock_frequency * one_mhz };
