@@ -36,6 +36,7 @@ constexpr u32 ACCESS_FLAG = 1 << 10;
 constexpr u32 OUTER_SHAREABLE = (2 << 8);
 constexpr u32 INNER_SHAREABLE = (3 << 8);
 
+constexpr u64 MAIR_MASK = 0x7 << 2;
 // these index into the MAIR attribute table
 constexpr u32 NORMAL_MEMORY = (0 << 2);
 constexpr u32 DEVICE_MEMORY = (1 << 2);
@@ -135,7 +136,7 @@ public:
     void set_write_through(bool) { }
 
     bool is_cache_disabled() const { TODO_AARCH64(); }
-    void set_cache_disabled(bool) { }
+    void set_cache_disabled(bool b) { m_raw = (m_raw & ~MAIR_MASK) | (b ? DEVICE_MEMORY : NORMAL_MEMORY); }
 
     bool is_global() const { TODO_AARCH64(); }
     void set_global(bool) { }
