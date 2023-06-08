@@ -214,6 +214,7 @@ set(KERNEL_SOURCES
     Interrupts/PCIIRQHandler.cpp
     Interrupts/SharedIRQHandler.cpp
     Interrupts/UnhandledInterruptHandler.cpp
+    kprintf.cpp
     KSyms.cpp
     Memory/AddressSpace.cpp
     Memory/AnonymousVMObject.cpp
@@ -408,7 +409,6 @@ if ("${SERENITY_ARCH}" STREQUAL "x86_64")
 
         # TODO: Share these with the aarch64 build
         Interrupts/SpuriousInterruptHandler.cpp
-        kprintf.cpp        
     )
 
     set(KERNEL_SOURCES
@@ -472,7 +472,6 @@ elseif("${SERENITY_ARCH}" STREQUAL "aarch64")
         Arch/aarch64/Dummy.cpp
         Arch/aarch64/InterruptManagement.cpp
         Arch/aarch64/Interrupts.cpp
-        Arch/aarch64/kprintf.cpp
         Arch/aarch64/MainIdRegister.cpp
         Arch/aarch64/PageDirectory.cpp
         Arch/aarch64/Panic.cpp

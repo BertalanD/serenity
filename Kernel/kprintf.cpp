@@ -10,6 +10,8 @@
 #include <Kernel/Arch/DebugOutput.h>
 #if ARCH(X86_64)
 #    include <Kernel/Arch/x86_64/BochsDebugOutput.h>
+#else
+#    include <Kernel/Arch/aarch64/RPi/UART.h>
 #endif
 #include <Kernel/Devices/DeviceManagement.h>
 #include <Kernel/Devices/GPU/Console/BootFramebufferConsole.h>
@@ -69,13 +71,12 @@ static void critical_console_out(char ch)
 
 static void console_out(char ch)
 {
-    if (s_serial_debug_enabled)
-        serial_putch(ch);
-
     // It would be bad to reach the assert in ConsoleDevice()::the() and do a stack overflow
 
     if (DeviceManagement::the().is_console_device_attached()) {
         DeviceManagement::the().console_device().put_char(ch);
+    } else if (s_serial_debug_enabled) {
+        serial_putch(ch);
     } else {
 #if ARCH(X86_64)
         bochs_debug_output(ch);

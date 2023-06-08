@@ -47,12 +47,6 @@ UNMAP_AFTER_INIT ConsoleManagement::ConsoleManagement()
 UNMAP_AFTER_INIT void ConsoleManagement::initialize()
 {
     for (size_t index = 0; index < s_max_virtual_consoles; index++) {
-        // FIXME: Better determine the debug TTY we chose...
-        if (index == 1) {
-            VERIFY(DeviceManagement::the().is_console_device_attached());
-            m_consoles.append(VirtualConsole::create_with_preset_log(index, DeviceManagement::the().console_device().logbuffer()));
-            continue;
-        }
         m_consoles.append(VirtualConsole::create(index));
     }
     // Note: By default the active console is the first one.
@@ -63,6 +57,9 @@ UNMAP_AFTER_INIT void ConsoleManagement::initialize()
     m_active_console = m_consoles[tty_number];
     SpinlockLocker lock(m_lock);
     m_active_console->set_active(true);
+    for (auto c : DeviceManagement::the().console_device().logbuffer())
+        m_active_console->emit_char(c);
+
     if (!m_active_console->is_graphical())
         m_active_console->clear();
 }

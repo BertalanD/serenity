@@ -36,9 +36,3 @@ void initialize()
 }
 
 }
-
-// kprintf.cpp
-void set_serial_debug_enabled(bool)
-{
-    dbgln("FIXME: Add support for changing state of serial debugging");
-}

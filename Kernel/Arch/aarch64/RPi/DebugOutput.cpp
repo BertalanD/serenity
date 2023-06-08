@@ -12,6 +12,8 @@ namespace Kernel {
 void debug_output(char ch)
 {
     RPi::UART::the().send(ch);
+    if (ch == '\n')
+        RPi::UART::the().send('\r');
 }
 
 }
