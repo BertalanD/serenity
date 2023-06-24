@@ -554,6 +554,7 @@ ErrorOr<void> SDHostController::transaction_control_with_data_transfer_using_the
 
     // 6. Then, wait for the Command Complete Interrupt.
     if (!retry_with_timeout([&]() { return m_registers->interrupt_status.command_complete; })) {
+        dbgln("Timeout waiting for command complete interrupt {:b}", (u32)m_registers->interrupt_status.raw);
         return EIO;
     }
 
@@ -576,6 +577,7 @@ ErrorOr<void> SDHostController::transaction_control_with_data_transfer_using_the
                     [&]() {
                         return m_registers->interrupt_status.buffer_write_ready;
                     })) {
+                dbgln("Timeout waiting for buffer write ready interrupt {:b}", (u32)m_registers->interrupt_status.raw);
                 return EIO;
             }
 
@@ -595,6 +597,7 @@ ErrorOr<void> SDHostController::transaction_control_with_data_transfer_using_the
         for (u32 i = 0; i < block_count; i++) {
             // 14. Then wait for the Buffer Read Ready Interrupt.
             if (!retry_with_timeout([&]() { return m_registers->interrupt_status.buffer_read_ready; })) {
+                dbgln("Timeout waiting for buffer read ready interrupt {:b}", (u32)m_registers->interrupt_status.raw);
                 return EIO;
             }
 
@@ -620,6 +623,7 @@ ErrorOr<void> SDHostController::transaction_control_with_data_transfer_using_the
     // 19. Wait for Transfer Complete Interrupt.
     if (!retry_with_timeout(
             [&]() { return m_registers->interrupt_status.transfer_complete; })) {
+        dbgln("Timeout waiting for transfer complete interrupt {:b}", (u32)m_registers->interrupt_status.raw);
         return EIO;
     }
 
