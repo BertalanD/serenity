@@ -21,17 +21,8 @@ SDHostController& SDHostController::the()
 SDHostController::SDHostController()
     : ::SDHostController()
 {
-    auto& gpio = GPIO::the();
-    gpio.set_pin_function(21, GPIO::PinFunction::Alternate3); // CD
-    gpio.set_pin_high_detect_enable(21, true);
-
-    gpio.set_pin_function(22, GPIO::PinFunction::Alternate3); // SD1_CLK
-    gpio.set_pin_function(23, GPIO::PinFunction::Alternate3); // SD1_CMD
-
-    gpio.set_pin_function(24, GPIO::PinFunction::Alternate3); // SD1_DAT0
-    gpio.set_pin_function(25, GPIO::PinFunction::Alternate3); // SD1_DAT1
-    gpio.set_pin_function(26, GPIO::PinFunction::Alternate3); // SD1_DAT2
-    gpio.set_pin_function(27, GPIO::PinFunction::Alternate3); // SD1_DAT3
+    // We assume that the GPIOs are set up correctly by the bootloader. Otherwise, we should
+    // obtain them from the pinctrl-0 property of the device tree node.
 
     m_registers = MMIO::the().peripheral<SD::HostControlRegisterMap>(0x30'0000);
 }
