@@ -28,6 +28,12 @@ public:
         if (!is_constant_evaluated())
             VERIFY(!Checked<uintptr_t>::addition_would_overflow(reinterpret_cast<uintptr_t>(characters), length));
     }
+    template<size_t N>
+    ALWAYS_INLINE constexpr StringView(char const (&string)[N])
+        : m_characters(string)
+        , m_length(N - 1)
+    {
+    }
     ALWAYS_INLINE StringView(unsigned char const* characters, size_t length)
         : m_characters(reinterpret_cast<char const*>(characters))
         , m_length(length)

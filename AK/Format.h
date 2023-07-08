@@ -75,9 +75,12 @@ struct TypeErasedParameter {
         Int16,
         Int32,
         Int64,
+#ifndef KERNEL
         Float,
         Double,
+#endif
         Char,
+        String,
         Custom
     };
 
@@ -110,6 +113,7 @@ struct TypeErasedParameter {
     __AK_TYPE_ERASED_PARAMETER_INTEGER_WIDTH(64)
 #undef __AK_TYPE_ERASED_PARAMETER_INTEGER_WIDTH
 
+#ifndef KERNEL
     TypeErasedParameter(float value)
         : type { Type::Float }
         , value { .as_float = value }
@@ -121,10 +125,17 @@ struct TypeErasedParameter {
         , value { .as_double = value }
     {
     }
+#endif
 
     TypeErasedParameter(char value)
         : type { Type::Char }
         , value { .as_char = value }
+    {
+    }
+
+    TypeErasedParameter(StringView value)
+        : type { Type::String }
+        , value { .as_string = value }
     {
     }
 
@@ -148,12 +159,16 @@ struct TypeErasedParameter {
             return visitor(value.as_i32);
         case TypeErasedParameter::Type::Int64:
             return visitor(value.as_i64);
+#ifndef KERNEL
         case TypeErasedParameter::Type::Float:
             return visitor(value.as_float);
         case TypeErasedParameter::Type::Double:
             return visitor(value.as_double);
+#endif
         case TypeErasedParameter::Type::Char:
             return visitor(value.as_char);
+        case TypeErasedParameter::Type::String:
+            return visitor(value.as_string);
         case TypeErasedParameter::Type::Custom:
             return visitor(value.as_custom);
         }
@@ -173,10 +188,14 @@ struct TypeErasedParameter {
         i32 as_i32;
         i64 as_i64;
 
+#ifndef KERNEL
         float as_float;
         double as_double;
+#endif
 
         char as_char;
+
+        StringView as_string;
 
         CustomValue as_custom;
     } value;
@@ -319,6 +338,18 @@ private:
     TypeErasedParameter m_parameters[0];
 };
 
+template<typename T>
+T const& format_as(T const& value)
+{
+    return value;
+}
+
+template<size_t N>
+StringView format_as(char const (&value)[N])
+{
+    return { value };
+}
+
 template<AllowDebugOnlyFormatters allow_debug_formatters, typename... Parameters>
 class VariadicFormatParams : public TypeErasedFormatParams {
 public:
@@ -326,7 +357,7 @@ public:
 
     explicit VariadicFormatParams(Parameters const&... parameters)
         : TypeErasedFormatParams(sizeof...(Parameters))
-        , m_parameter_storage { TypeErasedParameter { parameters }... }
+        , m_parameter_storage { TypeErasedParameter { format_as(parameters) }... }
     {
         constexpr bool any_debug_formatters = (is_debug_only_formatter<Formatter<Parameters>>() || ...);
         static_assert(!any_debug_formatters || allow_debug_formatters == AllowDebugOnlyFormatters::Yes,
