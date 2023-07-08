@@ -26,6 +26,20 @@
 #endif
 
 namespace AK {
+size_t TypeErasedParameter::to_size() const
+{
+    return visit([]<typename T>(T value) -> size_t {
+        if constexpr (IsIntegral<T>) {
+            if constexpr (sizeof(T) > sizeof(size_t))
+                VERIFY(value < NumericLimits<size_t>::max());
+            if constexpr (IsSigned<T>)
+                VERIFY(value >= 0);
+            return static_cast<size_t>(value);
+        }
+        VERIFY_NOT_REACHED();
+        __builtin_unreachable();
+    });
+}
 
 class FormatParser : public GenericLexer {
 public:
@@ -98,7 +112,17 @@ ErrorOr<void> vformat_impl(TypeErasedFormatParams& params, FormatBuilder& builde
     auto& parameter = params.parameters().at(specifier.index);
 
     FormatParser argparser { specifier.flags };
-    TRY(parameter.formatter(params, builder, argparser, parameter.value));
+    TRY(parameter.visit([&](auto& value) -> ErrorOr<void> {
+        using Type = RemoveCVReference<decltype(value)>;
+        if constexpr (IsSame<Type, TypeErasedParameter::CustomValue>) {
+            return value.formatter(params, builder, argparser, value.value);
+        } else {
+            Formatter<Type> formatter;
+
+            formatter.parse(params, argparser);
+            return formatter.format(builder, value);
+        }
+    }));
     TRY(vformat_impl(params, builder, parser));
     return {};
 }
