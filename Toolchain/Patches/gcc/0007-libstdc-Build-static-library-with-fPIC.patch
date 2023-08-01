@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Daniel Bertalan <dani@danielbertalan.dev>
+Date: Mon, 11 Sep 2023 16:37:27 +0200
+Subject: [PATCH] libstdc++: Build static library with -fPIC
+
+We want the libstdc++.a library to contain -fPIC code in order to link
+it statically into LibC/our shared objects. However, the build system
+forces no-pic/pie instead.
+
+This hack is from https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58638
+---
+ libstdc++-v3/configure | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libstdc++-v3/configure b/libstdc++-v3/configure
+index 6d5ffdd956231271c68eaaf2bfa3a95a7fa74489..5aa494f2b3ff9b9a0607d045581c5d6f1d59ff17 100755
+--- a/libstdc++-v3/configure
++++ b/libstdc++-v3/configure
+@@ -15624,8 +15624,8 @@ if test "$enable_shared" = yes; then
+   glibcxx_compiler_shared_flag="-D_GLIBCXX_SHARED"
+ 
+ else
+-  glibcxx_lt_pic_flag=
+-  glibcxx_compiler_pic_flag=
++  glibcxx_lt_pic_flag="-prefer-pic"
++  glibcxx_compiler_pic_flag="$lt_prog_compiler_pic_CXX"
+   glibcxx_compiler_shared_flag=
+ fi
+ 
