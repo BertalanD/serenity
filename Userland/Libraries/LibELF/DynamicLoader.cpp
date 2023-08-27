@@ -536,10 +536,6 @@ DynamicLoader::RelocationResult DynamicLoader::do_direct_relocation(DynamicObjec
     else
         patch_ptr = (FlatPtr*)(FlatPtr)relocation.offset();
 
-    auto call_ifunc_resolver = [](VirtualAddress address) {
-        return VirtualAddress { reinterpret_cast<DynamicObject::IfuncResolver>(address.get())() };
-    };
-
     auto lookup_symbol = [&](DynamicObject::Symbol const& symbol) {
         // The static linker sorts relocations by the referenced symbol. Especially when vtables
         // in large inheritance hierarchies are involved, there might be tens of references to
@@ -727,7 +723,7 @@ DynamicLoader::RelocationResult DynamicLoader::do_plt_relocation(DynamicObject::
         if (result.value().type == STT_GNU_IFUNC) {
             if (should_call_ifunc_resolver == ShouldCallIfuncResolver::No)
                 return RelocationResult::CallIfuncResolver;
-            symbol_location = VirtualAddress { reinterpret_cast<DynamicObject::IfuncResolver>(address.get())() };
+            symbol_location = call_ifunc_resolver(address);
         } else {
             symbol_location = address;
         }

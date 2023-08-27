@@ -190,4 +190,9 @@ void DynamicLoader::for_each_needed_library(F func) const
     dynamic_object().for_each_needed_library(move(func));
 }
 
+__attribute__((no_sanitize("function"))) inline VirtualAddress call_ifunc_resolver(VirtualAddress addr)
+{
+    return VirtualAddress { reinterpret_cast<void*(*)()>(addr.get())() };
+}
+
 } // end namespace ELF

@@ -8,6 +8,8 @@ files=(
 depends=("SDL2" "freetype")
 
 configure() {
+    export CXXFLAGS="-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR"
+    unset LDFLAGS
     run ./configure \
         --host="${SERENITY_ARCH}-pc-serenity" \
         --with-sdl-prefix="${SERENITY_INSTALL_ROOT}/usr/local" \

@@ -9,4 +9,3 @@ Remove android-specific SDL hint
 
 Add required const to char* declarations
 
-

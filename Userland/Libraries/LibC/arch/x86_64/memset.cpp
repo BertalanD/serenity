@@ -41,12 +41,10 @@ namespace {
 }
 }
 
-#if !defined(AK_COMPILER_CLANG) && !defined(_DYNAMIC_LOADER)
+#ifndef _DYNAMIC_LOADER
 [[gnu::ifunc("resolve_memset")]] void* memset(void*, int, size_t);
 #else
-// DynamicLoader can't self-relocate IFUNCs.
-// FIXME: There's a circular dependency between LibC and libunwind when built with Clang,
-// so the IFUNC resolver could be called before LibC has been relocated, returning bogus addresses.
+// DynamicLoader can't self-relocate IFUNCs yet.
 void* memset(void* dest_ptr, int c, size_t n)
 {
     static decltype(&memset) s_impl = nullptr;

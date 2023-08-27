@@ -548,7 +548,7 @@ static Result<void*, DlErrorMessage> __dlsym(void* handle, char const* symbol_na
         return DlErrorMessage { DeprecatedString::formatted("Symbol {} not found", symbol_name_view) };
 
     if (symbol.value().type == STT_GNU_IFUNC)
-        return (void*)reinterpret_cast<DynamicObject::IfuncResolver>(symbol.value().address.as_ptr())();
+        return call_ifunc_resolver(symbol.value().address).as_ptr();
     return symbol.value().address.as_ptr();
 }
 

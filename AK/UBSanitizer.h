@@ -154,4 +154,9 @@ struct FloatCastOverflowData {
     TypeDescriptor const& to_type;
 };
 
+struct FunctionTypeMismatchData {
+    SourceLocation location;
+    TypeDescriptor const& type;
+};
+
 }
